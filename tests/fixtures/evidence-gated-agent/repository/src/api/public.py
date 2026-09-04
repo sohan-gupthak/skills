@@ -20,5 +20,4 @@ def get_user_profile(directory_client, user_id):
         "display_name": record["display_name"],
         "email": record["email"],
         "created_at": record["created_at"],
-        "phone_number": record.get("phone_number"),
     }
