@@ -15,7 +15,28 @@ For a consequential repository change or completion claim, use this sequence:
    - `BLOCKED_EVIDENCE` when required factual evidence is absent, conflicting, or unavailable. It is unblocked by the required factual evidence, investigation/remediation that resolves the conflict, or an authorized narrower action.
    - `ALLOW` when a supported low-risk action may proceed.
    - `ALLOW_WITH_VERIFICATION` when a supported medium-risk action may proceed with its stated verification required before completion.
-   - `CHECKPOINT` when a supported high-risk action needs explicit human approval of the planned action, evidence, limitations, and verification plan. `CHECKPOINT` is not permission to act; explicit approval is required.
+   - `CHECKPOINT` when a supported high-risk action needs explicit human approval of the planned action, evidence, limitations, and verification plan. `CHECKPOINT` is not permission to act; explicit approval is required. For every `CHECKPOINT`, present the action as a written approval record the human signs. Use exactly this shape and the section labels `Approval covers`, `Irreversible consequences`, and `Required verification`; do not omit any of them. A "Reply APPROVE" or "your call" answer that does not match this record line-for-line is not authorization for the action; re-present the record or return `BLOCKED_CLARIFICATION`.
+
+   ```text
+   CHECKPOINT APPROVAL REQUIRED
+
+   Approval covers:
+   - <concrete action 1>
+   - <concrete action 2>
+   - ...
+
+   Irreversible consequences:
+   - <concrete consequence that cannot be undone>
+   - <concrete consequence that cannot be undone>
+   - ...
+
+   Required verification:
+   - <observation or command result that must hold before completion>
+   - <observation or command result that must hold before completion>
+   - ...
+
+   Reply APPROVE to authorize exactly the actions above.
+   ```
 6. Make only the authorized scoped change. If scope expands, reclassify risk, revise the evidence contract, and return to the pre-change state.
 7. Verify claims proportionally to the action and observed behavior. Run the post-change evidence gate: `COMPLETE` follows only when mandatory verification passed and the required post-change claims are supported.
 

@@ -37,26 +37,24 @@ Skill is valid!
 ```
 
 ## Documentation-contract checks — observed
-
-`tests/skill_contract_test.py` (dependency-free, `unittest`):
-
-```
 $ python3 -m unittest tests/skill_contract_test.py -v
+test_checkpoint_approval_record_has_all_required_sections (...) ... ok
 test_completion_report_is_terminal_not_a_new_gate_cycle (...) ... ok
 test_description_is_a_concise_trigger_pointer (...) ... ok
 test_gate_state_tokens_cover_all_outcomes (...) ... ok
 test_generic_approval_does_not_authorize_checkpoint (...) ... ok
 test_missing_required_evidence_never_authorizes_change (...) ... ok
-Ran 5 tests in 0.002s
+Ran 6 tests in 0.002s
 OK
 ```
 
-The five assertions enforce, in order: concise trigger-only description,
-complete six-state vocabulary, the exact missing-evidence sentence, the
-exact terminal-report sentence, and a generic-approval rule that rejects
-phrases like "go ahead" or "your call" as `CHECKPOINT` authorization and
-routes them to `BLOCKED_CLARIFICATION` when the specific action, evidence,
-limitations, and verification plan are not named.
+The six assertions enforce, in order: concise trigger-only description;
+complete six-state vocabulary; the exact missing-evidence sentence;
+the exact terminal-report sentence; a generic-approval rule that rejects
+phrases like "go ahead" or "your call" as `CHECKPOINT` authorization;
+and a `CHECKPOINT APPROVAL REQUIRED` record that must include the
+`Approval covers`, `Irreversible consequences`, and `Required verification`
+sections and a `Reply APPROVE to authorize exactly the actions above.`
 
 Pre-repair RED is preserved in
 `.superpowers/sdd/2026-09-04-evidence-gated-agent-repair/task-1-report.md`

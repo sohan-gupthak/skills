@@ -75,3 +75,11 @@ class SkillContractTest(unittest.TestCase):
             "BLOCKED_CLARIFICATION",
             body.split("Generic approval phrases", 1)[1],
         )
+
+    def test_checkpoint_approval_record_has_all_required_sections(self):
+        _, body = _frontmatter_and_body()
+        self.assertIn("CHECKPOINT APPROVAL REQUIRED", body)
+        for section in ("Approval covers", "Irreversible consequences", "Required verification"):
+            with self.subTest(section=section):
+                self.assertIn(section, body)
+        self.assertIn("Reply APPROVE to authorize exactly the actions above.", body)
