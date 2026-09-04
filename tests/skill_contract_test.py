@@ -67,3 +67,11 @@ class SkillContractTest(unittest.TestCase):
             "The final report is the terminal disposition of the authorized action.",
             body,
         )
+
+    def test_generic_approval_does_not_authorize_checkpoint(self):
+        _, body = _frontmatter_and_body()
+        self.assertIn("Generic approval phrases", body)
+        self.assertIn(
+            "BLOCKED_CLARIFICATION",
+            body.split("Generic approval phrases", 1)[1],
+        )

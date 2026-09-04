@@ -20,6 +20,7 @@ For a consequential repository change or completion claim, use this sequence:
 7. Verify claims proportionally to the action and observed behavior. Run the post-change evidence gate: `COMPLETE` follows only when mandatory verification passed and the required post-change claims are supported.
 
 Missing required factual evidence remains `BLOCKED_EVIDENCE`.
+Generic approval phrases ("go ahead", "your call", "do what's best", "use your judgment", or similar) are not authorization for a `CHECKPOINT` action. Explicit approval must name the specific action, evidence, limitations, and verification plan. If authorization remains ambiguous, return `BLOCKED_CLARIFICATION` with the smallest authoritative question that resolves it.
 When no applicable policy requires the absent property, a human can choose a narrower action or accept an established adverse risk; approval never makes an unsupported factual claim true. A verification contradiction or an unverified required post-change claim returns to `BLOCKED_EVIDENCE` for investigation/remediation.
 
 Report the action, scope and risk, state, claims with provenance and limitations, missing/conflicting evidence, authorized next action, and required verification. The final report is the terminal disposition of the authorized action. It does not restart a gate cycle.

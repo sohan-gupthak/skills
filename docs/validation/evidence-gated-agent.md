@@ -45,14 +45,23 @@ $ python3 -m unittest tests/skill_contract_test.py -v
 test_completion_report_is_terminal_not_a_new_gate_cycle (...) ... ok
 test_description_is_a_concise_trigger_pointer (...) ... ok
 test_gate_state_tokens_cover_all_outcomes (...) ... ok
+test_generic_approval_does_not_authorize_checkpoint (...) ... ok
 test_missing_required_evidence_never_authorizes_change (...) ... ok
-Ran 4 tests in 0.000s
+Ran 5 tests in 0.002s
 OK
 ```
 
+The five assertions enforce, in order: concise trigger-only description,
+complete six-state vocabulary, the exact missing-evidence sentence, the
+exact terminal-report sentence, and a generic-approval rule that rejects
+phrases like "go ahead" or "your call" as `CHECKPOINT` authorization and
+routes them to `BLOCKED_CLARIFICATION` when the specific action, evidence,
+limitations, and verification plan are not named.
+
 Pre-repair RED is preserved in
 `.superpowers/sdd/2026-09-04-evidence-gated-agent-repair/task-1-report.md`
-(3 of 4 assertions failed; the gate-state-token assertion already passed).
+(3 of 4 original assertions failed; the gate-state-token assertion already
+passed).
 
 ## Fixture contract correction — observed
 
@@ -64,7 +73,7 @@ returned an undocumented `phone_number` field. After correction:
 ```
 $ cd tests/fixtures/evidence-gated-agent/repository && python3 -m pytest -q
 ........                                                               [100%]
-8 passed in 0.12s
+8 passed in 0.13s
 ```
 
 The fixture test now asserts the documented contract (`phone_number` absent)
