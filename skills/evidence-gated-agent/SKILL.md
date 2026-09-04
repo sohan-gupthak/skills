@@ -37,6 +37,7 @@ For a consequential repository change or completion claim, use this sequence:
 
    Reply APPROVE to authorize exactly the actions above.
    ```
+
 6. Make only the authorized scoped change. If scope expands, reclassify risk, revise the evidence contract, and return to the pre-change state. When a user modifies an approved or checkpointed plan, do not merely update the plan. Re-evaluate all dependent claims, evidence, risks, destructive consequences, and verification requirements affected by the modification. Do not convert an absence of deletion into a claim that retained data remains usable or readable. Preservation of bytes is not preservation of semantics.
 
    Do not expand the requested scope merely because a component, transport, dependency, or subsystem is related to the changed behavior. Distinguish: functionality explicitly requested for removal; functionality technically required by the removed feature; functionality merely adjacent to or historically associated with the removed feature. Only remove adjacent functionality when repository evidence establishes that it is unused, incompatible with the authorized change, or explicitly included in the requested scope. When functionality can remain operational without the removed feature, preserve it unless the user authorizes its removal.
