@@ -9,8 +9,8 @@ For a consequential repository change or completion claim, use this sequence:
 
 1. Separate the requested action from material assumptions. If ambiguity could change behavior, scope, safety, or solution, issue `BLOCKED_CLARIFICATION`; it is unblocked by the smallest authoritative clarification that resolves it.
 2. Classify the action in its discovered context as low, medium, or high risk. Consider public/shared surface, behavioral, data, security, financial, and production impact, reversibility, dependencies, and observability.
-3. Create a claim-specific evidence contract: current scope, decision-relevant claims, evidence needed for each claim, and the consequence if a claim is unsupported. For public API, auth/authorization, payments, migrations, or destructive operations, use [high-risk domains](references/high-risk-domains.md) while building that contract. For every mandatory verification, classify the evidence as `static` (source inspection, grep, type checking, configuration inspection) or `runtime` (actually executing the application and observing behavior). A source-level check is not proof of runtime behavior; a runtime claim must be supported by an actual executed observation.
-4. Gather proportional evidence. Prefer repository artifacts and executable observations; use deterministic analysis where appropriate. Record provenance as `claim -> observed fact -> artifact or command result -> method -> limitation`. For mandatory verifications, capture a baseline run before any change so a later pre-existing failure can be compared against it instead of assumed.
+3. Create a claim-specific evidence contract: current scope, decision-relevant claims, evidence needed for each claim, and the consequence if a claim is unsupported. For public API, auth/authorization, payments, migrations, or destructive operations, use [high-risk domains](references/high-risk-domains.md) while building that contract. For every mandatory verification, classify the evidence as `static` (source inspection, grep, type checking, configuration inspection) or `runtime` (actually executing the application and observing behavior). A source-level check is not proof of runtime behavior; a runtime claim must be supported by an actual executed observation. When a work item is required or chosen to be tracked by an Evidence Ledger under the risk-tiered policy in [references/evidence-ledger.md](references/evidence-ledger.md), record the contract in the active ledger so it survives context loss.
+4. Gather proportional evidence. Prefer repository artifacts and executable observations; use deterministic analysis where appropriate. Record provenance as `claim -> observed fact -> artifact or command result -> method -> limitation`. For mandatory verifications, capture a baseline run before any change so a later pre-existing failure can be compared against it instead of assumed. Baseline and evidence records live in the active Evidence Ledger whenever a ledger is in use for this change.
 5. Resolve the pre-change state:
    - `BLOCKED_EVIDENCE` when required factual evidence is absent, conflicting, or unavailable. It is unblocked by the required factual evidence, investigation/remediation that resolves the conflict, or an authorized narrower action. If a mandatory gate is already known to be impossible to pass without an out-of-scope change, do not proceed while declaring that gate mandatory: either obtain authorization to expand scope and reclassify, or explicitly redefine the verification contract so the gate is no longer mandatory, with the limitation recorded.
    - `ALLOW` when a supported low-risk action may proceed.
@@ -49,6 +49,69 @@ A pre-existing failure may be excluded from scope, but it cannot be represented 
 Missing required factual evidence remains `BLOCKED_EVIDENCE`. An inability to execute a required verification is also insufficient evidence for `COMPLETE`; report the verification as `UNVERIFIED` or `FAILED` and keep the overall disposition `BLOCKED_EVIDENCE` when that verification is mandatory.
 Generic approval phrases ("go ahead", "your call", "do what's best", "use your judgment", or similar) are not authorization for a `CHECKPOINT` action. Explicit approval must name the specific action, evidence, limitations, and verification plan. If authorization remains ambiguous, return `BLOCKED_CLARIFICATION` with the smallest authoritative question that resolves it.
 When no applicable policy requires the absent property, a human can choose a narrower action or accept an established adverse risk; approval never makes an unsupported factual claim true. A verification contradiction or an unverified required post-change claim returns to `BLOCKED_EVIDENCE` for investigation/remediation.
+
+## Evidence Ledger for persistent state
+
+For medium and high-risk work, the operational state of an active change must persist beyond conversation context. The Evidence Ledger is the persistent record. It is the same Markdown reference, the same status taxonomy, the same provenance chain, and the same completion gate as the rest of this skill, applied to a per-change document.
+
+### The ledger is a record, not evidence
+
+Writing a claim in a ledger does not make it true. A ledger entry must preserve provenance, exactly as the rest of this skill does. `PASS` in a ledger means a recorded observation that, on its own terms, supports the claim; the record is not stronger than the observation. A bare assertion with no observation, artifact, method, or limitation is `UNVERIFIED`, no matter where it is written.
+
+### When a ledger is required
+
+Use the existing risk classification:
+
+- `LOW` risk: ledger is optional. A local variable rename, isolated typo fix, or non-consequential documentation correction does not need one.
+- `MEDIUM` risk: ledger is recommended when the change involves meaningful evidence tracking, multiple verification steps, or work that may span multiple investigation or execution phases.
+- `HIGH` risk: ledger is mandatory. Public API or contract changes, authentication, authorization, payments, financial operations, schema migrations, destructive operations, irreversible actions, and significant production impact all require one.
+
+### Where a ledger lives
+
+Default location: `.evidence-gated/active/<change-id>.md`, with completed ledgers moved to `.evidence-gated/archive/<change-id>.md`. The default is a working-state directory, not part of the published repository: add `.evidence-gated/active/` to `.gitignore` for new projects unless the user or repository conventions say otherwise. repository conventions and explicit user instructions take precedence; the agent must not silently modify `.gitignore` merely because the skill uses a ledger, and must not commit an active ledger without authorization.
+If the change is particularly high-risk, the user explicitly requests an audit trail, or repository conventions require persistent documentation, the ledger may be committed intentionally and named accordingly (for example, `docs/evidence-gated/<change-id>.md`).
+
+### Ledger lifecycle
+
+1. Determine whether a ledger is required based on the risk classification above.
+2. Locate an existing active ledger before creating a new one; do not create multiple ledgers for the same active change.
+3. Read the active ledger before continuing. Re-read it before: a new investigation phase, a significant change execution, requesting checkpoint approval, acting on an approval, any scope change, any verification requirement change, and any completion claim. The re-read must confirm the current requested action, authorized scope, risk, active assumptions, mandatory claims, mandatory verification, checkpoint state, approval state, known limitations, and current disposition. Do not rely on memory for any of these.
+4. Update the ledger when material facts change: risk, scope, assumptions, evidence, verification requirements, baseline, checkpoint state, approval state, execution state, verification results, final disposition.
+5. Finalize the ledger at a terminal disposition: `COMPLETE`, `BLOCKED_EVIDENCE`, or `BLOCKED_CLARIFICATION`. A ledger implying `COMPLETE` while mandatory claims remain unresolved is invalid and must be rewritten or returned to the appropriate unblock condition.
+
+### Required content
+
+The active ledger must contain at minimum: change id and current status, requested action, authorized scope, explicitly out-of-scope items, scope limitations and unknowns, risk classification with reasons, material assumptions with status and supporting evidence or limitation, the evidence contract (one entry per decision-relevant claim with required evidence, evidence type, consequence if unsupported, and status), evidence records (one per significant item, preserving `claim -> observed fact -> artifact or command result -> method -> limitation -> status`), baseline verification, checkpoint state, execution log for material state transitions, verification record for every mandatory verification, and a limitations/missing/conflicting/unresolved section.
+
+### Phases and dispositions
+
+The ledger header carries two distinct fields. Do not conflate them.
+
+**Operational Phase** describes what the agent is currently doing with the change, in the order work proceeds. The phases are `DRAFT` (ledger created, contract not yet written), `INVESTIGATING` (gathering evidence, capturing baseline, resolving assumptions), `EXECUTING` (authorized scoped change in progress), `VERIFYING` (post-change verification and finalization). Phases are bookkeeping. They do not authorize anything; they do not block anything; they do not count as evidence. A phase transition without the corresponding disposition change is not a change in authorization.
+
+**Disposition** is the gate-level decision from the universal protocol. The dispositions are exactly the six canonical states of this skill: `BLOCKED_CLARIFICATION`, `BLOCKED_EVIDENCE`, `ALLOW`, `ALLOW_WITH_VERIFICATION`, `CHECKPOINT`, `COMPLETE`. The disposition is what authorizes execution, gates verification, and finalizes the change. At finalization, the ledger disposition must be one of these six. Intermediate phases are not a substitute for a disposition.
+
+The same change can be in `EXECUTING` phase and `ALLOW_WITH_VERIFICATION` disposition at the same time. The same change can be in `INVESTIGATING` phase and `BLOCKED_EVIDENCE` disposition at the same time. Conflating them makes authorization unclear and hides the gate; do not do it.
+
+### Approval and scope rules apply inside the ledger
+
+Generic approval phrases ("go ahead", "your call", "do what's best", "use your judgment") are not authorization when recorded in a ledger any more than they are in conversation. Approval in the ledger must be tied to the same `CHECKPOINT APPROVAL REQUIRED` record used by the rest of this skill. Discovering that another component is related to the change is not new authorization. A new evidence finding is not a new scope. When scope materially changes: record the proposed change, identify affected claims and verifications, re-evaluate risk, determine whether new authorization is required, update the ledger, and do not execute unauthorized expanded scope.
+
+### Source of truth hierarchy
+
+Authority depends on what is being established. The skill is fundamentally about evidence-gated factual claims, so a user assertion about a factual matter is not a substitute for that evidence. The hierarchy is two-axis:
+
+For intent, authorization, desired scope, and acceptable tradeoffs:
+
+1. Explicit user instruction or approval.
+
+For factual repository state, runtime behavior, and verification results:
+
+1. Direct repository and runtime evidence, including command output for executed verification.
+2. Recorded Evidence Ledger, as a record of that evidence.
+3. Agent memory or conversation context.
+
+The Evidence Ledger never overrides its underlying source evidence, and user assertions about factual matters are not promoted to fact by being recorded. If the ledger conflicts with current repository evidence or explicit user instructions: identify the contradiction, do not silently choose one, update the ledger only after resolving or explicitly recording the conflict.
 
 ## Verification status taxonomy
 

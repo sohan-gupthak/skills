@@ -1,5 +1,7 @@
 # Agent Skills
 
+[![skills.sh](https://skills.sh/b/sohan-gupthak/skills)](https://skills.sh/sohan-gupthak/skills)
+
 Reusable skills for coding agents.
 
 This repository currently provides the **`evidence-gated-agent`** skill, an evidence-first workflow for consequential repository changes and completion claims.

@@ -187,3 +187,86 @@ class SkillContractTest(unittest.TestCase):
         step3_region = body.split("3. Create a claim-specific evidence contract", 1)[1].split("4. Gather proportional evidence", 1)[0]
         self.assertIn("`static`", step3_region)
         self.assertIn("`runtime`", step3_region)
+    def test_evidence_ledger_section_present(self):
+        _, body = _frontmatter_and_body()
+        self.assertIn("## Evidence Ledger for persistent state", body)
+        self.assertIn("references/evidence-ledger.md", body)
+    def test_evidence_ledger_record_not_evidence_principle(self):
+        _, body = _frontmatter_and_body()
+        self.assertIn("The ledger is a record, not evidence", body)
+        self.assertIn("UNVERIFIED", body)
+    def test_evidence_ledger_risk_tiers_required(self):
+        _, body = _frontmatter_and_body()
+        ledger_region = body.split("Evidence Ledger for persistent state", 1)[1]
+        for token in ("optional", "recommended", "mandatory"):
+            with self.subTest(token=token):
+                self.assertIn(token, ledger_region)
+    def test_evidence_ledger_location_and_gitignore_rule(self):
+        _, body = _frontmatter_and_body()
+        self.assertIn(".evidence-gated/active/", body)
+        self.assertIn("repository conventions and explicit user instructions take precedence", body)
+        self.assertIn("must not silently modify `.gitignore`", body)
+    def test_evidence_ledger_re_read_required_before_continuing(self):
+        _, body = _frontmatter_and_body()
+        self.assertIn("Re-read it before", body)
+        for item in (
+            "a new investigation phase",
+            "a significant change execution",
+            "requesting checkpoint approval",
+            "any scope change",
+            "any completion claim",
+        ):
+            with self.subTest(item=item):
+                self.assertIn(item, body)
+    def test_evidence_ledger_reference_template_loads(self):
+        skill_root = _skill_path().parent
+        reference = skill_root / "references" / "evidence-ledger.md"
+        self.assertTrue(reference.exists(), f"missing {reference}")
+        text = reference.read_text()
+        for token in (
+            "## Template",
+            "## Source of truth hierarchy",
+            "Approval and scope rules apply inside the ledger",
+            "`PASS`",
+            "`FAIL`",
+            "`UNVERIFIED`",
+            "`PREEXISTING_FAILURE`",
+            "Completion gate inside the ledger",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+    def test_step3_does_not_force_medium_risk_into_ledger(self):
+        _, body = _frontmatter_and_body()
+        step3_region = body.split("3. Create a claim-specific evidence contract", 1)[1].split("4. Gather proportional evidence", 1)[0]
+        self.assertNotIn("For medium and high-risk work, record", step3_region)
+        self.assertNotIn("For high-risk work, baseline", step3_region)
+        self.assertIn("risk-tiered policy in", step3_region)
+    def test_source_of_truth_hierarchy_is_two_axis(self):
+        for path in (_skill_path(), _skill_path().parent / "references" / "evidence-ledger.md"):
+            with self.subTest(path=str(path)):
+                text = path.read_text()
+                self.assertIn("Authority depends on what is being established", text)
+                self.assertIn("intent, authorization, desired scope, and acceptable tradeoffs", text)
+                self.assertIn("factual repository state, runtime behavior, and verification results", text.replace("\n", " "))
+
+    def test_ledger_separates_phase_from_disposition(self):
+        for path in (_skill_path(), _skill_path().parent / "references" / "evidence-ledger.md"):
+            with self.subTest(path=str(path)):
+                text = path.read_text()
+                self.assertIn("Operational Phase", text)
+                self.assertIn("Disposition", text)
+                for phase in ("DRAFT", "INVESTIGATING", "EXECUTING", "VERIFYING"):
+                    with self.subTest(phase=phase):
+                        self.assertIn(phase, text)
+    def test_template_header_splits_phase_and_disposition(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        template_start = text.split("```md\n# Evidence Ledger", 1)[1].split("```", 1)[0]
+        self.assertIn("## Operational Phase", template_start)
+        self.assertIn("## Disposition", template_start)
+        for phase in ("DRAFT", "INVESTIGATING", "EXECUTING", "VERIFYING"):
+            with self.subTest(phase=phase):
+                self.assertIn(phase, template_start)
+        for disposition in ("BLOCKED_CLARIFICATION", "BLOCKED_EVIDENCE", "ALLOW", "ALLOW_WITH_VERIFICATION", "CHECKPOINT", "COMPLETE"):
+            with self.subTest(disposition=disposition):
+                self.assertIn(disposition, template_start)
