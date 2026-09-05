@@ -13,8 +13,8 @@ Default branch: `main`
 skills/evidence-gated-agent/
 ├── SKILL.md
 └── references/
-    └── high-risk-domains.md
-```
+    ├── high-risk-domains.md
+    └── evidence-ledger.md
 
 ## Installation
 
@@ -330,11 +330,38 @@ The terminal report should state:
 
 The final report is the terminal disposition of the authorized action and does not silently restart the evidence-gate cycle.
 
+## Evidence Ledger
+
+For medium and high-risk work, the agent must maintain a persistent Evidence Ledger at `.evidence-gated/active/<change-id>.md` (default working location; archive to `.evidence-gated/archive/` at finalization). The ledger is the persistent operational record of the active change. The agent re-reads it before every material step and finalizes it at a terminal disposition.
+
+The ledger is a record, not evidence. Every claim recorded in a ledger still needs its own provenance chain: `claim -> observed fact -> artifact or command result -> method -> limitation -> status`. A `PASS` in a ledger is a recorded observation that, on its own terms, supports the claim; the record is not stronger than the observation.
+
+Risk-tiered requirement:
+
+- `LOW` risk: optional.
+- `MEDIUM` risk: recommended when the change involves meaningful evidence tracking, multiple verification steps, or work that may span multiple investigation or execution phases.
+- `HIGH` risk: mandatory. Public API or contract changes, authentication, authorization, payments, financial operations, schema migrations, destructive operations, irreversible actions, and significant production impact all require one.
+
+The ledger header carries two distinct fields. Do not conflate them.
+
+- **Operational Phase**: `DRAFT`, `INVESTIGATING`, `EXECUTING`, `VERIFYING`. Bookkeeping; does not authorize anything.
+- **Disposition**: the six canonical states of this skill: `BLOCKED_CLARIFICATION`, `BLOCKED_EVIDENCE`, `ALLOW`, `ALLOW_WITH_VERIFICATION`, `CHECKPOINT`, `COMPLETE`. The disposition is what authorizes execution, gates verification, and finalizes the change.
+
+The same change can be in `EXECUTING` phase and `ALLOW_WITH_VERIFICATION` disposition at the same time. Conflating phase and disposition hides the gate; do not do it.
+
+Source of truth is two-axis. Authority depends on what is being established:
+
+- For intent, authorization, desired scope, and acceptable tradeoffs: explicit user instruction or approval wins.
+- For factual repository state, runtime behavior, and verification results: direct repository and runtime evidence wins, the recorded Evidence Ledger is a record of that evidence, and agent memory or conversation context is below both.
+
+The Evidence Ledger never overrides its underlying source evidence, and user assertions about factual matters are not promoted to fact by being recorded. Full lifecycle, template, and example evidence records live in `skills/evidence-gated-agent/references/evidence-ledger.md`.
+
 ## Repository Change Guidance
 
 When modifying this repository itself:
 
 - preserve the existing `skills/evidence-gated-agent/` structure unless the requested change explicitly requires otherwise;
 - keep the universal workflow in `SKILL.md` and domain-specific evidence requirements in `references/high-risk-domains.md`;
+- preserve the Evidence Ledger reference at `references/evidence-ledger.md`; do not remove or rename it without an explicit replacement path;
 - do not add claims about the skill that are not supported by the skill source or repository contents;
 - verify documentation and repository state before declaring documentation work complete.

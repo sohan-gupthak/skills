@@ -4,7 +4,7 @@
 
 Reusable skills for coding agents.
 
-This repository currently provides the **`evidence-gated-agent`** skill, an evidence-first workflow for consequential repository changes and completion claims.
+This repository currently provides the **`evidence-gated-agent`** skill, an evidence-first workflow for consequential repository changes and completion claims. It now also includes an **Evidence Ledger** for persistent operational state on medium and high-risk work.
 
 ## Available Skills
 
@@ -16,6 +16,8 @@ Use this skill when a coding agent is about to:
 - declare a consequential repository change complete.
 
 The workflow covers risk classification, claim-specific evidence contracts, pre-change baselines, scope control, human approval checkpoints for high-risk actions, static vs runtime evidence, verification integrity, and completion gates.
+
+For medium and high-risk work, the agent should also maintain an **Evidence Ledger** at `.evidence-gated/active/<change-id>.md`. The ledger is the persistent operational record; the agent re-reads it before each material step and finalizes it at a terminal disposition. It is a record of evidence, not evidence itself: every claim still needs its own provenance chain.
 
 ## Installation
 
@@ -38,11 +40,13 @@ skills/
 └── evidence-gated-agent/
     ├── SKILL.md
     └── references/
-        └── high-risk-domains.md
+        ├── high-risk-domains.md
+        └── evidence-ledger.md
 ```
 
-- `SKILL.md` contains the universal evidence-gating workflow.
+- `SKILL.md` contains the universal evidence-gating workflow, including the Evidence Ledger policy.
 - `references/high-risk-domains.md` provides additional evidence requirements for public API/contract changes, authentication and authorization, payments/financial operations, and schema migrations/destructive operations.
+- `references/evidence-ledger.md` is the Evidence Ledger reference: lifecycle, template, when the ledger is required, source-of-truth hierarchy, and the completion gate as it applies inside a ledger.
 
 ## Evidence-Gating Model
 
