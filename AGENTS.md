@@ -312,9 +312,10 @@ Implementation intent, source-code presence, or an unexecuted code path is not p
 - every mandatory verification is `PASS` or a properly evidenced `PREEXISTING_FAILURE`;
 - no evidence contradiction remains;
 - no required claim is merely assumed;
-- no unauthorized scope expansion occurred.
+- no unauthorized scope expansion occurred;
+- no mandatory evidence record's **current** validity status is `STALE` or `INVALIDATED` for the change on which its claim depends. A mandatory claim must not rely on evidence known to be `STALE` or `INVALIDATED` when that evidence supports a mandatory claim or verification requirement. Historical baseline evidence is preserved as a record of the pre-change state and is distinct from current post-change verification. See `## Evidence Freshness and Invalidation` for the validity state model and re-evaluation procedure.
 
-If any mandatory verification is `UNVERIFIED`, `FAIL`, or otherwise unresolved, or if the baseline comparison required for `PREEXISTING_FAILURE` is missing, the final disposition is `BLOCKED_EVIDENCE`.
+If any mandatory verification is `UNVERIFIED`, `FAIL`, or otherwise unresolved, if the baseline comparison required for `PREEXISTING_FAILURE` is missing, or if any mandatory evidence record's current validity status is `STALE` or `INVALIDATED` for the change on which its claim depends, the final disposition is `BLOCKED_EVIDENCE`.
 
 ## Final Reporting
 
@@ -355,6 +356,43 @@ Source of truth is two-axis. Authority depends on what is being established:
 - For factual repository state, runtime behavior, and verification results: direct repository and runtime evidence wins, the recorded Evidence Ledger is a record of that evidence, and agent memory or conversation context is below both.
 
 The Evidence Ledger never overrides its underlying source evidence, and user assertions about factual matters are not promoted to fact by being recorded. Full lifecycle, template, and example evidence records live in `skills/evidence-gated-agent/references/evidence-ledger.md`.
+
+## Evidence Freshness and Invalidation
+
+Evidence establishes a claim only relative to the state, assumptions, artifacts, and conditions under which it was obtained. Persisted evidence is not permanently valid: when a material change affects the conditions on which an evidence record depended, the affected evidence must be re-evaluated before being relied upon for a consequential decision or completion claim. Freshness is primarily about state dependency, not about age or wall-clock time. A change with no reasonable connection to any active evidence record must not trigger a re-evaluation; an unrelated typo fix must not invalidate unrelated evidence.
+
+Each evidence record carries a current **validity** state. Do not silently convert one into another and never silently rewrite history.
+
+| State | Meaning |
+|---|---|
+| `VALID` | Currently applicable to the claim based on known state. Not "permanently true"; "currently applicable". |
+| `STALE` | Something relevant has changed, but the effect has not yet been fully determined. Re-evaluate before relying on this evidence. |
+| `INVALIDATED` | A known change directly undermines the conditions under which the evidence was obtained. The evidence can no longer be relied upon for its claim. History preserved. |
+| `RE-VERIFIED` | Currently applicable, but previously `STALE` or `INVALIDATED` and re-established against the current state, with its own provenance. `RE-VERIFIED` is a current-validity state, not merely a historical transition. |
+
+Both `VALID` and `RE-VERIFIED` legitimately satisfy the completion gate when applicable to current state. `RE-VERIFIED` does not retroactively erase the prior `STALE` or `INVALIDATED` history; the chain must be preserved.
+
+When a potentially material change occurs, the agent must:
+
+1. **Identify affected claims.** Which existing claims may depend on what changed?
+2. **Identify supporting evidence.** For each affected claim, what evidence currently supports it?
+3. **Determine impact.** Classify the evidence as `VALID`, `STALE`, or `INVALIDATED`.
+4. **Record the reason.** Record what changed, why it affects this evidence, and which claim is affected. Do not merely change a status.
+5. **Determine whether re-verification is mandatory.** Consider risk level, consequence of relying on stale evidence, and whether the evidence supports a mandatory gate or completion claim.
+6. **Re-verify when required.** Gather new evidence against the current state with its own provenance.
+7. **Preserve history.** Do not overwrite historical evidence as though it never existed.
+
+Material-change categories: artifacts (source, schemas, configuration, contracts, migrations, infrastructure); assumptions (consumer, data, authorization, environment); scope (new components, previously out-of-scope components becoming relevant, authorized behavior changing); dependencies (services, external versions, contracts); verification conditions (environment, fixtures, configuration); new contradictory evidence.
+
+**Completion gate rule.** A mandatory claim must not rely on evidence whose **current** validity status is `STALE` or `INVALIDATED`. If re-evaluation establishes that previously `STALE` evidence remains applicable to the current state, the evidence record must document the re-evaluation and may return to `VALID`. If new evidence is gathered against the current state, the new evidence record is `RE-VERIFIED` with its own provenance. Historical stale or invalidation history must not permanently block completion; only the current validity status of mandatory evidence gates completion. If a mandatory evidence record's current status is `STALE` or `INVALIDATED`, the final disposition is `BLOCKED_EVIDENCE`.
+
+**Freshness versus authorization.** Freshness does not silently invalidate user authorization. Evidence invalidation (a technical verification is no longer current) is distinct from authorization invalidation (the implementation changed so materially that the approved scope no longer covers the new action). When a material change invalidates a critical assumption behind an approval such that the understood consequences have materially changed, record the new fact, reassess scope and consequences, determine whether the existing approval still covers the action, and request a new checkpoint if necessary.
+
+**Static and runtime.** Fresh static evidence does not substitute for required fresh runtime evidence. Freshness does not change evidence type requirements.
+
+**Baseline distinction.** A historical baseline is preserved as a record of the pre-change state; it does not become invalid merely because time passed. A baseline does not prove current behavior after relevant changes; post-change verification must establish current state independently.
+
+Detailed validity state definitions, dependency tracking, material-change detection, re-evaluation procedure, and the ledger template fields for freshness tracking live in `skills/evidence-gated-agent/references/evidence-ledger.md`. The Evidence Ledger's evidence record template now includes `**Validity:**`, `**Dependencies / Conditions:**`, `**Freshness Review:**`, and `**Invalidation / Staleness History:**` fields to support this tracking.
 
 ## Repository Change Guidance
 

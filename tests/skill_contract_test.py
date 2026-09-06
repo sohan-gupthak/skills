@@ -270,3 +270,146 @@ class SkillContractTest(unittest.TestCase):
         for disposition in ("BLOCKED_CLARIFICATION", "BLOCKED_EVIDENCE", "ALLOW", "ALLOW_WITH_VERIFICATION", "CHECKPOINT", "COMPLETE"):
             with self.subTest(disposition=disposition):
                 self.assertIn(disposition, template_start)
+
+    def test_freshness_section_present_in_skill(self):
+        _, body = _frontmatter_and_body()
+        freshness_region = body.split("## Evidence freshness and invalidation", 1)[1]
+        self.assertIn("`VALID`", freshness_region)
+        self.assertIn("`STALE`", freshness_region)
+        self.assertIn("`INVALIDATED`", freshness_region)
+        self.assertIn("`RE-VERIFIED`", freshness_region)
+        self.assertIn("references/evidence-ledger.md", freshness_region)
+
+    def test_freshness_is_state_dependent_not_merely_time(self):
+        _, body = _frontmatter_and_body()
+        freshness_region = body.split("## Evidence freshness and invalidation", 1)[1]
+        self.assertIn("state dependency", freshness_region)
+        self.assertIn("wall-clock time", freshness_region)
+        self.assertIn("time", freshness_region.lower())
+
+    def test_freshness_requires_material_change_not_every_edit(self):
+        _, body = _frontmatter_and_body()
+        freshness_region = body.split("## Evidence freshness and invalidation", 1)[1]
+        self.assertIn("material change", freshness_region)
+        self.assertIn("typo", freshness_region)
+
+    def test_stale_or_invalidated_evidence_blocks_completion(self):
+        _, body = _frontmatter_and_body()
+        freshness_region = body.split("## Evidence freshness and invalidation", 1)[1]
+        self.assertIn("`STALE`", freshness_region)
+        self.assertIn("`INVALIDATED`", freshness_region)
+        self.assertIn("`COMPLETE`", freshness_region)
+        self.assertIn("mandatory", freshness_region)
+
+    def test_freshness_preserves_history_and_avoids_silent_deletion(self):
+        _, body = _frontmatter_and_body()
+        freshness_region = body.split("## Evidence freshness and invalidation", 1)[1]
+        self.assertIn("silently deleted", freshness_region)
+        self.assertIn("preserve", freshness_region.lower())
+
+    def test_freshness_distinguishes_baseline_from_current_verification(self):
+        _, body = _frontmatter_and_body()
+        freshness_region = body.split("## Evidence freshness and invalidation", 1)[1]
+        self.assertIn("baseline", freshness_region.lower())
+        self.assertIn("pre-change", freshness_region)
+
+    def test_freshness_does_not_replace_runtime_evidence_with_static(self):
+        _, body = _frontmatter_and_body()
+        freshness_region = body.split("## Evidence freshness and invalidation", 1)[1]
+        self.assertIn("runtime", freshness_region.lower())
+        self.assertIn("static", freshness_region.lower())
+
+    def test_freshness_does_not_silently_invalidate_authorization(self):
+        _, body = _frontmatter_and_body()
+        freshness_region = body.split("## Evidence freshness and invalidation", 1)[1]
+        self.assertIn("authorization", freshness_region.lower())
+        self.assertIn("checkpoint", freshness_region.lower())
+
+    def test_ledger_defines_validity_states(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Evidence freshness and validity", 1)[1].split("## Source of truth hierarchy", 1)[0]
+        for token in ("`VALID`", "`STALE`", "`INVALIDATED`", "`RE-VERIFIED`"):
+            with self.subTest(token=token):
+                self.assertIn(token, region)
+        self.assertIn("history", region.lower())
+
+    def test_ledger_documents_state_dependency_not_just_age(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Evidence freshness and validity", 1)[1].split("## Source of truth hierarchy", 1)[0]
+        self.assertIn("state dependency", region)
+        self.assertIn("wall-clock time", region)
+
+    def test_ledger_documents_re_evaluation_procedure(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Evidence freshness and validity", 1)[1].split("## Source of truth hierarchy", 1)[0]
+        for token in (
+            "Re-evaluation procedure",
+            "Identify affected claims",
+            "Identify supporting evidence",
+            "Determine impact",
+            "Record the reason",
+            "Re-verify when required",
+            "Preserve history",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, region)
+
+    def test_ledger_template_tracks_validity_dependencies_history(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        template_start = text.split("```md\n# Evidence Ledger", 1)[1].split("```", 1)[0]
+        self.assertIn("**Validity:**", template_start)
+        for token in ("VALID", "STALE", "INVALIDATED", "RE-VERIFIED"):
+            with self.subTest(token=token):
+                self.assertIn(token, template_start)
+        self.assertIn("**Dependencies / Conditions:**", template_start)
+        self.assertIn("**Freshness Review:**", template_start)
+        self.assertIn("**Invalidation / Staleness History:**", template_start)
+
+    def test_ledger_completion_gate_blocks_on_stale_or_invalidated(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Completion gate inside the ledger", 1)[1]
+        self.assertIn("`STALE`", region)
+        self.assertIn("`INVALIDATED`", region)
+        self.assertIn("`COMPLETE`", region)
+        self.assertIn("`BLOCKED_EVIDENCE`", region)
+
+    def test_ledger_preserves_baseline_distinct_from_current_verification(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Completion gate inside the ledger", 1)[1]
+        self.assertIn("baseline", region.lower())
+        self.assertIn("historical", region.lower())
+
+    def test_existing_ledger_principles_remain_intact_after_freshness(self):
+        for path in (_skill_path(), _skill_path().parent / "references" / "evidence-ledger.md"):
+            with self.subTest(path=str(path)):
+                text = path.read_text()
+                self.assertIn("The ledger is a record, not evidence", text)
+                self.assertIn("Authority depends on what is being established", text)
+                self.assertIn("two-axis", text.lower())
+                self.assertIn("every mandatory verification", text.lower())
+                self.assertIn("Operational Phase", text)
+                self.assertIn("Disposition", text)
+
+    def test_re_verified_is_current_validity_not_merely_transition(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Evidence freshness and validity", 1)[1].split("## Source of truth hierarchy", 1)[0]
+        self.assertIn("current-validity state", region)
+        self.assertIn("not merely a historical transition", region)
+        self.assertIn("Both `VALID` and `RE-VERIFIED` legitimately satisfy the completion gate", region)
+
+    def test_completion_gate_uses_current_validity_status(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Completion gate inside the ledger", 1)[1]
+        self.assertIn("**current**", region)
+        self.assertIn("Historical stale or invalidation history must not", region)
+        self.assertIn("permanently block completion", region)
+        self.assertIn("may return to `VALID`", region)
+        self.assertIn("the new evidence record is `RE-VERIFIED`", region)

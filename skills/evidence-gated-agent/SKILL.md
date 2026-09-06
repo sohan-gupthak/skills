@@ -113,7 +113,25 @@ For factual repository state, runtime behavior, and verification results:
 
 The Evidence Ledger never overrides its underlying source evidence, and user assertions about factual matters are not promoted to fact by being recorded. If the ledger conflicts with current repository evidence or explicit user instructions: identify the contradiction, do not silently choose one, update the ledger only after resolving or explicitly recording the conflict.
 
+
+## Evidence freshness and invalidation
+
+Evidence establishes a claim only relative to the state, assumptions, artifacts, and conditions under which it was obtained. Persisted evidence is not permanently valid: when a material change affects the conditions on which an evidence record depended, the affected evidence must be re-evaluated before being relied upon for a consequential decision or completion claim. Freshness is primarily about state dependency, not about age or wall-clock time; an inspection performed moments ago can already be stale, and an inspection performed earlier can still be `VALID` if the relevant state has not changed.
+
+A material change is one with a reasonable connection to the conditions required for an evidence record to support its claim. Examples include changes to relevant source code, schemas, configuration, contracts, migrations, or infrastructure definitions; changes to assumptions such as consumer, data, authorization, or environment assumptions; scope expansion that brings previously out-of-scope components into relevance; relevant dependency or contract changes; verification-condition changes such as environment, fixture, or relevant configuration changes; and new evidence that contradicts prior evidence. Do not require a re-evaluation for changes with no reasonable connection to any active evidence record; an unrelated typo fix must not invalidate unrelated API compatibility evidence.
+
+Evidence validity in this skill follows four states. `VALID` means the evidence is currently applicable to its claim based on known state. `STALE` means something relevant has changed but the effect has not yet been fully determined; re-evaluation is required before relying on this evidence. `INVALIDATED` means a known change directly undermines the conditions under which the evidence was obtained; the evidence can no longer be relied upon for its claim. `RE-VERIFIED` means evidence that was `STALE` or `INVALIDATED` has been re-established against the current state, with its own provenance recorded. `RE-VERIFIED` does not retroactively erase the prior `STALE` or `INVALIDATED` state; the chain must be preserved.
+
+When a potentially material change occurs, the agent must identify which existing claims depend on what changed, identify the supporting evidence for each affected claim, classify the evidence as `VALID`, `STALE`, or `INVALIDATED`, record the reason (what changed, why it affects this evidence, which claim is affected), determine whether re-verification is mandatory based on risk level, consequence of relying on stale evidence, and whether the evidence supports a mandatory gate or completion claim, gather new evidence against the current state when required, and preserve history. Historical evidence must not be silently deleted or overwritten.
+
+A completion claim must not rely on evidence known to be `STALE` or `INVALIDATED` when that evidence supports a mandatory claim or verification requirement. Historical baseline evidence is preserved as a record of the pre-change state; it does not become invalid merely because time passed, and it is distinct from current post-change verification evidence. Static and runtime evidence remain distinct kinds: fresh static evidence does not substitute for required fresh runtime evidence.
+
+Freshness does not silently invalidate user authorization. A technical verification becoming stale is not the same as the approved scope no longer covering the new action. When a material change invalidates a critical assumption behind an approval such that the understood consequences have materially changed, the agent must record the new fact, reassess scope and consequences, determine whether the existing approval still covers the action, and request a new checkpoint if necessary.
+
+Detailed validity state definitions, dependency tracking, material-change detection, re-evaluation procedure, and the ledger template fields for freshness tracking live in [references/evidence-ledger.md](references/evidence-ledger.md).
+
 ## Verification status taxonomy
+
 
 Use these terms consistently and never silently convert one into another:
 

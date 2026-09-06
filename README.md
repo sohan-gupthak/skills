@@ -4,7 +4,7 @@
 
 Reusable skills for coding agents.
 
-This repository currently provides the **`evidence-gated-agent`** skill, an evidence-first workflow for consequential repository changes and completion claims. It now also includes an **Evidence Ledger** for persistent operational state on medium and high-risk work.
+This repository currently provides the **`evidence-gated-agent`** skill, an evidence-first workflow for consequential repository changes and completion claims. It now also includes an **Evidence Ledger** for persistent operational state on medium and high-risk work, and explicit **Evidence Freshness and Invalidation rules** so that persisted evidence can be re-evaluated when material changes affect the conditions on which it depended, without becoming permanently valid merely because it was once collected.
 
 ## Available Skills
 
@@ -15,7 +15,7 @@ Use this skill when a coding agent is about to:
 - make a consequential repository change; or
 - declare a consequential repository change complete.
 
-The workflow covers risk classification, claim-specific evidence contracts, pre-change baselines, scope control, human approval checkpoints for high-risk actions, static vs runtime evidence, verification integrity, and completion gates.
+The workflow covers risk classification, claim-specific evidence contracts, pre-change baselines, scope control, human approval checkpoints for high-risk actions, static vs runtime evidence, verification integrity, completion gates, and evidence freshness and invalidation rules. Evidence carries a current validity state (`VALID`, `STALE`, `INVALIDATED`, `RE-VERIFIED`) and must be re-evaluated when a material change affects the conditions on which it depended. A completion claim must not rely on evidence whose current validity is `STALE` or `INVALIDATED` when that evidence supports a mandatory claim or verification requirement.
 
 For medium and high-risk work, the agent should also maintain an **Evidence Ledger** at `.evidence-gated/active/<change-id>.md`. The ledger is the persistent operational record; the agent re-reads it before each material step and finalizes it at a terminal disposition. It is a record of evidence, not evidence itself: every claim still needs its own provenance chain.
 
@@ -77,6 +77,7 @@ Verification results are explicitly classified as:
 5. **High-risk actions require explicit checkpoints.** Approval must authorize the exact stated scope and verification plan.
 6. **Failed mandatory verification remains failed.** Targeted or alternative checks do not replace a required repository-wide or runtime verification.
 7. **Unverified claims cannot become completion claims.**
+8. **Evidence is not permanently valid.** Persisted evidence carries a current validity state (`VALID`, `STALE`, `INVALIDATED`, `RE-VERIFIED`). Material changes to the conditions on which an evidence record depended require re-evaluation, and stale or invalidated evidence cannot support a mandatory completion claim. Historical records are preserved.
 
 ## Documentation for Coding Agents
 
