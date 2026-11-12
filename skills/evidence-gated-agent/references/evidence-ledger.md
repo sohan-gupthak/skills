@@ -46,6 +46,15 @@ a ledger means: a recorded observation exists, and on its own terms
 it supports the claim. The record is not stronger than the
 observation. The ledger preserves the chain; it does not replace it.
 
+### Proportionality budget
+
+The ledger is bounded, not exhaustive:
+
+- A ledger for an isolated change should stay under roughly 200 lines. A larger ledger requires a stated reason (multiple phases, audit requirement, high-risk domain).
+- Record each material fact once. Do not re-edit the ledger to reword an existing entry.
+- Do not re-read the ledger to verify its own formatting. The ledger is written for a future reader, not for the agent's self-check.
+- Stop writing when every required section exists and every mandatory claim has one evidence record. Additional polish is waste.
+
 ## When a ledger is required
 
 Use the risk classification in [SKILL.md](../SKILL.md):
@@ -55,10 +64,22 @@ Use the risk classification in [SKILL.md](../SKILL.md):
 - `MEDIUM` risk: recommended when the change involves meaningful
   evidence tracking, multiple verification steps, or work that may
   span multiple investigation or execution phases.
-- `HIGH` risk: mandatory. Public API or contract changes,
+- `HIGH` risk: mandatory. Public HTTP or WebSocket contracts,
   authentication, authorization, payments, financial operations,
-  schema migrations, destructive operations, irreversible actions,
-  and significant production impact all require one.
+  schema migrations, destructive or irreversible data operations,
+  production configuration, shared credential handling, irreversible
+  actions, and significant production impact all require one.
+
+Concrete tier examples; when two tiers plausibly apply, the higher
+tier wins:
+
+- `LOW`: local rename, comment or typo fix, isolated test addition,
+  non-consequential documentation.
+- `MEDIUM`: shared type or interface (a contract, not a local edit),
+  internal module contract, new internal helper adopted by one call
+  site, UI behavior change with no data or auth surface, multi-file
+  refactor.
+- `HIGH`: the list above.
 
 When in doubt, escalate to the higher tier. The cost of an extra
 ledger is a single Markdown file; the cost of a missed one is a
@@ -93,6 +114,12 @@ appropriate when:
   consequential changes (for example, `docs/evidence-gated/...`).
 
 The agent must not commit an active ledger without authorization.
+Writing the ledger is part of this skill's own operation and is
+authorized by the skill unless the caller explicitly forbids it. If a
+caller forbids all writes, keep the ledger inline in the report; do not
+pretend a ledger file exists and do not skip the ledger silently. If a
+caller forbids writes but the change is `HIGH` risk, surface the
+conflict before acting.
 
 ## Lifecycle
 
@@ -125,6 +152,19 @@ The agent must not commit an active ledger without authorization.
    unresolved is invalid and must be returned to the appropriate
    unblock condition.
 
+## Reopening a finalized ledger
+
+Reopening a finalized ledger is allowed when an external change or new
+evidence affects a completed change. On reopen:
+
+1. Set the operational phase to `INVESTIGATING`.
+2. Set the disposition to `BLOCKED_EVIDENCE` or
+   `BLOCKED_CLARIFICATION` until the affected claims are re-evaluated.
+3. Keep the prior final disposition verbatim in a history subsection
+   marked `SUPERSEDED`. Never overwrite it.
+4. `COMPLETE` may be restored only after the affected evidence is
+   `VALID` or `RE-VERIFIED` against current state and every affected
+   mandatory verification has been re-run.
 
 ## Evidence freshness and validity
 
@@ -179,6 +219,17 @@ Freshness does not silently invalidate user authorization. Evidence invalidation
 ### Static and runtime evidence
 
 Freshness rules respect the existing distinction between static and runtime evidence. Static evidence (such as a repository inspection finding three consumers) may become stale if relevant repository code changes. Runtime evidence (such as an endpoint returning HTTP 200) may become invalidated if relevant runtime behavior changes. Fresh static evidence does not substitute for required fresh runtime evidence; freshness does not change evidence type requirements.
+
+Static evidence supports presence, absence, shape, type compatibility, call graph, configuration contents, and file-level diffs. Runtime evidence is required for status codes, response bodies, rendered output, emitted events, timing, persistence effects, and any statement that a code path executed. A claim whose wording implies behavior must not be recorded `PASS` on static evidence; record it `UNVERIFIED` and name the missing runtime observation.
+
+### Harness fidelity
+
+Every runtime evidence record states its harness:
+
+- `harness`: real entrypoint, or a named harness listing every stubbed, mocked, or shimmed component.
+- `fidelity`: what the observation does and does not establish about the unmodified system.
+
+A runtime observation from a harness with stubbed components may support claims about the exercised components only. It may not support a claim about the unmodified entrypoint, and it may not be the sole evidence for a completion claim unless the contract explicitly accepts it.
 
 ## Claim and evidence impact tracking
 
@@ -702,6 +753,10 @@ UNVERIFIED | PASS | FAIL | PREEXISTING_FAILURE
 **Method:** <how the observation was made>
 
 **Evidence Type:** Static | Runtime
+
+**Harness:** real entrypoint, or named harness with stubbed/mocked/shimmed components
+
+**Fidelity:** what this observation does and does not establish about the unmodified system
 
 **Limitation:** <what this evidence does not establish>
 

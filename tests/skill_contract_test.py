@@ -601,3 +601,154 @@ class SkillContractTest(unittest.TestCase):
         self.assertIn("## Claim and evidence impact tracking", body)
         impact_region = body.split("## Claim and evidence impact tracking", 1)[1]
         self.assertIn("references/evidence-ledger.md", impact_region)
+
+    def test_evidence_gathering_side_effects_inherit_risk(self):
+        _, body = _frontmatter_and_body()
+        step2 = body.split("2. Classify the action", 1)[1].split("3. Create a claim-specific evidence contract", 1)[0]
+        self.assertIn("Risk classification applies to every action the agent takes", step2)
+        step4 = body.split("4. Gather proportional evidence", 1)[1].split("5. Resolve the pre-change state", 1)[0]
+        self.assertIn("Evidence-gathering is itself gated by step 2", step4)
+        self.assertIn("stops at `CHECKPOINT` before the probe, not after it", step4)
+
+    def test_shared_type_is_a_contract_not_low(self):
+        _, body = _frontmatter_and_body()
+        step2 = body.split("2. Classify the action", 1)[1].split("3. Create a claim-specific evidence contract", 1)[0]
+        self.assertIn("A shared exported type or interface is a contract, not a local edit", step2)
+        self.assertIn("`MEDIUM`", step2)
+
+    def test_risk_tier_table_present(self):
+        _, body = _frontmatter_and_body()
+        step2 = body.split("2. Classify the action", 1)[1].split("3. Create a claim-specific evidence contract", 1)[0]
+        self.assertIn("| `LOW` |", step2)
+        self.assertIn("| `MEDIUM` |", step2)
+        self.assertIn("| `HIGH` |", step2)
+        self.assertIn("the higher tier wins", step2)
+
+    def test_post_hoc_gate_redefinition_forbidden(self):
+        _, body = _frontmatter_and_body()
+        integrity = body.split("## Verification integrity", 1)[1].split("## Impossible mandatory gates", 1)[0]
+        self.assertIn("A mandatory gate may be redefined only before the change is executed", integrity)
+        self.assertIn("must not narrow the contract to make a completed change pass", integrity)
+        impossible = body.split("## Impossible mandatory gates", 1)[1].split("## Unrelated failures", 1)[0]
+        self.assertIn("Redefinition is valid only before the change is executed", impossible)
+
+    def test_static_evidence_support_boundaries(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Static vs runtime evidence", 1)[1].split("## Baseline-vs-post-change rule", 1)[0]
+        self.assertIn("`static` evidence supports", region)
+        self.assertIn("`runtime` evidence is required for", region)
+        self.assertIn("must not be recorded `PASS` on static evidence", region)
+        self.assertIn("record it `UNVERIFIED` and state which runtime observation is missing", region)
+
+    def test_harness_fidelity_required_for_runtime_evidence(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Static vs runtime evidence", 1)[1].split("## Baseline-vs-post-change rule", 1)[0]
+        self.assertIn("Harness fidelity", region)
+        self.assertIn("`harness`", region)
+        self.assertIn("`fidelity`", region)
+        self.assertIn("stubbed components may support claims about the exercised components only", region)
+
+    def test_ledger_write_conflict_resolution(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("### Where a ledger lives", 1)[1].split("### Ledger lifecycle", 1)[0]
+        self.assertIn("Writing the ledger is part of this skill's own operation", region)
+        self.assertIn("keep the ledger inline in the report", region)
+        self.assertIn("do not pretend a ledger file exists", region)
+        self.assertIn("surface the conflict before acting", region)
+
+    def test_completion_checklist_present(self):
+        _, body = _frontmatter_and_body()
+        gate = body.split("## Completion gate", 1)[1].split("Report the action, scope and risk", 1)[0]
+        self.assertIn("Before reporting, answer this checklist", gate)
+        for item in (
+            "Was the authorized change actually executed",
+            "Does every mandatory claim have one evidence record",
+            "Is every mandatory verification `PASS` or `PREEXISTING_FAILURE`",
+            "Is any mandatory evidence currently `STALE` or `INVALIDATED`",
+            "Did any gate get redefined",
+            "Is the report free of claims the evidence does not support",
+        ):
+            with self.subTest(item=item):
+                self.assertIn(item, gate)
+        self.assertIn("the disposition is `BLOCKED_EVIDENCE` or `BLOCKED_CLARIFICATION`, not `COMPLETE`", gate)
+
+    def test_ledger_proportionality_budget_present(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        self.assertIn("Proportionality budget", text)
+        region = text.split("### Proportionality budget", 1)[1].split("## When a ledger is required", 1)[0]
+        self.assertIn("under roughly 200 lines", region)
+        self.assertIn("Record each material fact once", region)
+        self.assertIn("Do not re-read the ledger to verify its own formatting", region)
+        self.assertIn("Stop writing when every required section exists", region)
+
+    def test_ledger_reopen_finalized_rules(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        self.assertIn("## Reopening a finalized ledger", text)
+        region = text.split("## Reopening a finalized ledger", 1)[1].split("## Evidence freshness and validity", 1)[0]
+        self.assertIn("Set the operational phase to `INVESTIGATING`", region)
+        self.assertIn("`BLOCKED_EVIDENCE`", region)
+        self.assertIn("`SUPERSEDED`", region)
+        self.assertIn("Never overwrite it", region)
+        self.assertIn("`COMPLETE` may be restored only after", region)
+        self.assertIn("`RE-VERIFIED`", region)
+
+    def test_ledger_evidence_template_has_harness_and_fidelity(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        template_start = text.split("```md\n# Evidence Ledger", 1)[1].split("```", 1)[0]
+        self.assertIn("**Harness:**", template_start)
+        self.assertIn("**Fidelity:**", template_start)
+
+    def test_ledger_write_conflict_in_reference(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Where a ledger lives", 1)[1].split("## Lifecycle", 1)[0]
+        self.assertIn("Writing the ledger is part of this skill's own operation", region)
+        self.assertIn("keep the ledger inline in the report", region)
+        self.assertIn("surface the\nconflict before acting", region) or self.assertIn("surface the conflict before acting", " ".join(region.split()))
+
+    def test_ledger_tier_examples_in_reference(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## When a ledger is required", 1)[1].split("## Where a ledger lives", 1)[0]
+        self.assertIn("Concrete tier examples", region)
+        self.assertIn("shared type or interface", region)
+        self.assertIn("the higher\ntier wins", region) or self.assertIn("the higher tier wins", " ".join(region.split()))
+
+    def test_regression_suite_file_exists_with_all_scenarios(self):
+        reference = _skill_path().parent / "references" / "regression-tests.md"
+        self.assertTrue(reference.exists(), f"missing {reference}")
+        text = reference.read_text()
+        for scenario in (
+            "## R1",
+            "## R2",
+            "## R3",
+            "## R4",
+            "## R5",
+            "## R6",
+            "## R7",
+            "## R8",
+            "## R9",
+        ):
+            with self.subTest(scenario=scenario):
+                self.assertIn(scenario, text)
+        for token in (
+            "Expected disposition",
+            "Observable pass condition",
+            "Known failure mode caught",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    def test_regression_suite_covers_budget_and_static_and_reopen(self):
+        reference = _skill_path().parent / "references" / "regression-tests.md"
+        text = reference.read_text()
+        self.assertIn("shared exported", text)
+        self.assertIn("rendered output", text)
+        self.assertIn("no runtime", text)
+        self.assertIn("tests pass", text.lower())
+        self.assertIn("finalized `COMPLETE`", text) or self.assertIn("finalized `COMPLETE`", text)
+        self.assertIn("page", text.lower())
+        self.assertIn("200 lines", text)

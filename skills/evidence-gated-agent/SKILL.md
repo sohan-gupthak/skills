@@ -8,9 +8,17 @@ description: Use when a coding agent is about to make a consequential repository
 For a consequential repository change or completion claim, use this sequence:
 
 1. Separate the requested action from material assumptions. If ambiguity could change behavior, scope, safety, or solution, issue `BLOCKED_CLARIFICATION`; it is unblocked by the smallest authoritative clarification that resolves it.
-2. Classify the action in its discovered context as low, medium, or high risk. Consider public/shared surface, behavioral, data, security, financial, and production impact, reversibility, dependencies, and observability.
+2. Classify the action in its discovered context as low, medium, or high risk. Consider public/shared surface, behavioral, data, security, financial, and production impact, reversibility, dependencies, and observability. Risk tiers carry concrete examples; when two tiers plausibly apply, the higher tier wins:
+
+   | Tier | Examples |
+   | --- | --- |
+   | `LOW` | local rename, comment or typo fix, isolated test addition, non-consequential documentation |
+   | `MEDIUM` | shared type or interface, internal module contract, new internal helper adopted by one call site, UI behavior change with no data or auth surface, multi-file refactor |
+   | `HIGH` | public HTTP or WebSocket contract, authentication or authorization, payments, schema migration, destructive or irreversible data operation, production configuration, shared credential handling |
+
+   A shared exported type or interface is a contract, not a local edit: classify it `MEDIUM` or higher. Risk classification applies to every action the agent takes, not only the requested change. An evidence-gathering action whose side effects are destructive, irreversible, or touch shared or persistent state carries the same risk tier as the change it supports, and the same pre-action gate applies before that action runs.
 3. Create a claim-specific evidence contract: current scope, decision-relevant claims, evidence needed for each claim, and the consequence if a claim is unsupported. For public API, auth/authorization, payments, migrations, or destructive operations, use [high-risk domains](references/high-risk-domains.md) while building that contract. For every mandatory verification, classify the evidence as `static` (source inspection, grep, type checking, configuration inspection) or `runtime` (actually executing the application and observing behavior). A source-level check is not proof of runtime behavior; a runtime claim must be supported by an actual executed observation. When a work item is required or chosen to be tracked by an Evidence Ledger under the risk-tiered policy in [references/evidence-ledger.md](references/evidence-ledger.md), record the contract in the active ledger so it survives context loss.
-4. Gather proportional evidence. Prefer repository artifacts and executable observations; use deterministic analysis where appropriate. Record provenance as `claim -> observed fact -> artifact or command result -> method -> limitation`. For mandatory verifications, capture a baseline run before any change so a later pre-existing failure can be compared against it instead of assumed. Baseline and evidence records live in the active Evidence Ledger whenever a ledger is in use for this change.
+4. Gather proportional evidence. Prefer repository artifacts and executable observations; use deterministic analysis where appropriate. Record provenance as `claim -> observed fact -> artifact or command result -> method -> limitation`. For mandatory verifications, capture a baseline run before any change so a later pre-existing failure can be compared against it instead of assumed. Baseline and evidence records live in the active Evidence Ledger whenever a ledger is in use for this change. Evidence-gathering is itself gated by step 2: read-only observation of shared state needs no checkpoint, but creating, updating, or deleting shared or persistent state during investigation carries the same risk tier as the change it supports and needs the same pre-action gate. A `HIGH`-risk claim that can only be established by a probe writing to a shared database stops at `CHECKPOINT` before the probe, not after it.
 5. Resolve the pre-change state:
    - `BLOCKED_EVIDENCE` when required factual evidence is absent, conflicting, or unavailable. It is unblocked by the required factual evidence, investigation/remediation that resolves the conflict, or an authorized narrower action. If a mandatory gate is already known to be impossible to pass without an out-of-scope change, do not proceed while declaring that gate mandatory: either obtain authorization to expand scope and reclassify, or explicitly redefine the verification contract so the gate is no longer mandatory, with the limitation recorded.
    - `ALLOW` when a supported low-risk action may proceed.
@@ -70,6 +78,7 @@ Use the existing risk classification:
 
 Default location: `.evidence-gated/active/<change-id>.md`, with completed ledgers moved to `.evidence-gated/archive/<change-id>.md`. The default is a working-state directory, not part of the published repository: add `.evidence-gated/active/` to `.gitignore` for new projects unless the user or repository conventions say otherwise. repository conventions and explicit user instructions take precedence; the agent must not silently modify `.gitignore` merely because the skill uses a ledger, and must not commit an active ledger without authorization.
 If the change is particularly high-risk, the user explicitly requests an audit trail, or repository conventions require persistent documentation, the ledger may be committed intentionally and named accordingly (for example, `docs/evidence-gated/<change-id>.md`).
+Writing the ledger is part of this skill's own operation and is authorized by the skill unless the caller explicitly forbids it. If a caller forbids all writes, keep the ledger inline in the report; do not pretend a ledger file exists and do not skip the ledger silently. If a caller forbids writes but the change is `HIGH` risk, surface the conflict before acting: state that the ledger cannot be written as a file, present the ledger content inline, and ask whether the caller authorizes a file write.
 
 ### Ledger lifecycle
 
@@ -191,6 +200,22 @@ Use these terms consistently and never silently convert one into another:
 
 A claim is only as strong as its evidence kind. `static` evidence (source inspection, grep, type checking, configuration inspection) can establish that code is present, removed, or shaped in a particular way; it cannot establish that a runtime behavior occurred. `runtime` evidence (actually executing the application or its relevant path and observing the result) is required to establish runtime claims such as "the relevant storage keys are absent after the cleanup path runs" or "the API returns the documented payload under load." A source-level check is not a substitute for a required runtime observation; if runtime verification cannot be performed, the claim is `UNVERIFIED`, not `PASS` or `COMPLETE`.
 
+Static and runtime evidence have distinct support boundaries:
+
+- `static` evidence supports: presence, absence, shape, type compatibility, call graph, configuration contents, file-level diffs.
+- `runtime` evidence is required for: status codes, response bodies, rendered output, emitted events, timing, persistence effects, and any statement that a code path executed.
+
+A claim whose wording implies behavior must not be recorded `PASS` on static evidence; record it `UNVERIFIED` and state which runtime observation is missing.
+
+### Harness fidelity
+
+Every runtime evidence record must state the harness:
+
+- `harness`: real entrypoint, or a named harness with the list of stubbed, mocked, or shimmed components.
+- `fidelity`: what the observation does and does not establish about the unmodified system.
+
+A runtime observation from a harness with stubbed components may support claims about the exercised components only. It may not support a claim about the unmodified entrypoint, and it may not be the sole evidence for a completion claim unless the contract explicitly accepts it.
+
 ## Baseline-vs-post-change rule for pre-existing failures
 
 For every mandatory verification that may already be failing before the requested change:
@@ -215,12 +240,14 @@ Example:
 
 A required verification must be evaluated exactly as defined in the active evidence contract. The agent must not replace, weaken, narrow, reinterpret, or downgrade a failed required verification with a different verification after execution. If repository-wide `tsc` is required and fails, targeted compilation of edited files does not satisfy that requirement. If a production build is required and fails, source-level checks do not satisfy that requirement. If a runtime smoke test is required and cannot be executed, static inspection does not satisfy that requirement. Targeted or alternative verification may be reported as supplementary evidence, but the original required verification remains `FAILED` or `UNVERIFIED`.
 
+A mandatory gate may be redefined only before the change is executed. After execution, a gate that cannot be satisfied must be reported `UNVERIFIED` or `FAILED` and the disposition must be `BLOCKED_EVIDENCE`; the agent must not narrow the contract to make a completed change pass. If the agent believes a gate was wrongly mandatory, it must say so before execution and request the reclassification.
+
 ## Impossible mandatory gates
 
 Before execution, inspect every mandatory verification. If a mandatory gate is already known to be impossible to pass without an out-of-scope change, do not proceed while simultaneously declaring that gate mandatory. Either:
 
 - obtain authorization to expand scope and reclassify the change; or
-- explicitly redefine the verification contract so the gate is no longer mandatory, with the limitation recorded.
+- explicitly redefine the verification contract so the gate is no longer mandatory, with the limitation recorded. Redefinition is valid only before the change is executed; it must not be used after execution to make a completed change pass. A redefinition that changes the completion criteria requires authorization.
 
 The agent must never knowingly execute a plan containing an impossible mandatory verification and then call the result `COMPLETE`.
 
@@ -248,5 +275,16 @@ Pre-existing failures affect attribution, not verification status. When a requir
 - no unauthorized scope expansion occurred.
 
 If any mandatory verification is `UNVERIFIED`, `FAIL`, or otherwise unresolved, or if the baseline comparison for a `PREEXISTING_FAILURE` claim is missing, the final disposition is `BLOCKED_EVIDENCE`. The pre-change evidence gate must not be re-entered silently; return to the appropriate unblock condition or re-classify.
+
+Before reporting, answer this checklist:
+
+1. Was the authorized change actually executed, and only that change?
+2. Does every mandatory claim have one evidence record with observed fact, artifact, method, limitation, status, and validity?
+3. Is every mandatory verification `PASS` or `PREEXISTING_FAILURE` with a baseline comparison?
+4. Is any mandatory evidence currently `STALE` or `INVALIDATED`?
+5. Did any gate get redefined, and if so, was it before execution and authorized?
+6. Is the report free of claims the evidence does not support?
+
+If any answer is no, the disposition is `BLOCKED_EVIDENCE` or `BLOCKED_CLARIFICATION`, not `COMPLETE`.
 
 Report the action, scope and risk, state, claims with provenance and limitations, missing/conflicting evidence, authorized next action, and required verification. The final report is the terminal disposition of the authorized action. It does not restart a gate cycle.
