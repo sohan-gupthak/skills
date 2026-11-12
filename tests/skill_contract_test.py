@@ -707,7 +707,7 @@ class SkillContractTest(unittest.TestCase):
         region = text.split("## Where a ledger lives", 1)[1].split("## Lifecycle", 1)[0]
         self.assertIn("Writing the ledger is part of this skill's own operation", region)
         self.assertIn("keep the ledger inline in the report", region)
-        self.assertIn("surface the\nconflict before acting", region) or self.assertIn("surface the conflict before acting", " ".join(region.split()))
+        self.assertIn("surface the conflict before acting", " ".join(region.split()))
 
     def test_ledger_tier_examples_in_reference(self):
         reference = _skill_path().parent / "references" / "evidence-ledger.md"
@@ -715,7 +715,7 @@ class SkillContractTest(unittest.TestCase):
         region = text.split("## When a ledger is required", 1)[1].split("## Where a ledger lives", 1)[0]
         self.assertIn("Concrete tier examples", region)
         self.assertIn("shared type or interface", region)
-        self.assertIn("the higher\ntier wins", region) or self.assertIn("the higher tier wins", " ".join(region.split()))
+        self.assertIn("the higher tier wins", " ".join(region.split()))
 
     def test_regression_suite_file_exists_with_all_scenarios(self):
         reference = _skill_path().parent / "references" / "regression-tests.md"
