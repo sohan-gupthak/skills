@@ -3,9 +3,10 @@ import unittest
 
 
 def _skill_path() -> Path:
+    repo_root = Path(__file__).parent.parent
     candidates = (
-        Path("skills/evidence-gated-agent/SKILL.md"),
-        Path("evidence-gated-agent/SKILL.md"),
+        repo_root / "skills" / "evidence-gated-agent" / "SKILL.md",
+        repo_root / "evidence-gated-agent" / "SKILL.md",
     )
     for path in candidates:
         if path.exists():
@@ -718,7 +719,7 @@ class SkillContractTest(unittest.TestCase):
         self.assertIn("the higher tier wins", " ".join(region.split()))
 
     def test_regression_suite_file_exists_with_all_scenarios(self):
-        reference = _skill_path().parent / "references" / "regression-tests.md"
+        reference = Path(__file__).parent / "regression-tests.md"
         self.assertTrue(reference.exists(), f"missing {reference}")
         text = reference.read_text()
         for scenario in (
@@ -743,7 +744,7 @@ class SkillContractTest(unittest.TestCase):
                 self.assertIn(token, text)
 
     def test_regression_suite_covers_budget_and_static_and_reopen(self):
-        reference = _skill_path().parent / "references" / "regression-tests.md"
+        reference = Path(__file__).parent / "regression-tests.md"
         text = reference.read_text()
         self.assertIn("shared exported", text)
         self.assertIn("rendered output", text)
