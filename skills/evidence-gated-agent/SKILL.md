@@ -130,6 +130,49 @@ Freshness does not silently invalidate user authorization. A technical verificat
 
 Detailed validity state definitions, dependency tracking, material-change detection, re-evaluation procedure, and the ledger template fields for freshness tracking live in [references/evidence-ledger.md](references/evidence-ledger.md).
 
+## Claim and evidence impact tracking
+
+Impact tracking is a lightweight relationship model that lets the agent trace how a material change may propagate through claims, evidence, and verification requirements. It does not build a dependency graph and does not require a complete map of the repository; it records enough relationships to reason operationally about cascading impact.
+
+The relationship model is:
+
+```text
+Material Change
+    -> Affected Dependencies / Conditions
+    -> Affected Claims
+    -> Supporting Evidence
+    -> Required Verification
+```
+
+When a material change occurs, the agent must:
+
+1. Identify the change and why it may be material.
+2. Identify which dependencies or conditions the change affects.
+3. Identify which claims depend on those conditions.
+4. Identify which evidence records support those claims.
+5. Identify which verification requirements support those claims.
+6. Feed the affected evidence into the existing freshness classification (`VALID` / `STALE` / `INVALIDATED` / `RE-VERIFIED`).
+7. Determine the required action: no action, re-evaluate, re-run verification, gather new evidence, request a checkpoint, or request clarification.
+
+Impact tracking is not proof. A relationship such as `Change -> Claim` does not establish that the claim is true or false. Impact tracking identifies what requires consideration; freshness determines whether the existing evidence still applies; verification establishes what is true about the current state. These three responsibilities must remain distinct and must not collapse into competing validity systems.
+
+Unknown impact is not the same as no impact. When the agent cannot determine whether a change affects a claim, the impact must be recorded as `UNKNOWN`, not silently treated as `NO_KNOWN_IMPACT`. The two are distinct:
+
+- `NO_KNOWN_IMPACT` — the change was considered and no reasonable connection to the claim was found.
+- `UNKNOWN` — the change may affect the claim, but the repository inspection did not establish that connection.
+
+Discovering that a component is related to the change is not new authorization. Impact discovery and scope authorization are separate gates. If impact analysis reveals work that may be required outside the authorized scope, record the impact, explain why it matters, determine whether the existing authorization covers it, and request clarification or a checkpoint when required. Do not silently expand scope on the basis of an impact finding.
+
+For medium and high-risk work using an Evidence Ledger, an unresolved material impact (`UNKNOWN` or `REQUIRES_REVIEW`) on a mandatory claim blocks `COMPLETE` proportionally to risk and consequence. An unrelated or low-consequence unknown relationship does not block completion.
+
+Risk-tiered usage:
+
+- `LOW` risk — optional. Use only when the relationship materially helps reasoning.
+- `MEDIUM` risk — recommended when multiple claims depend on shared conditions, when scope may evolve, or when a change may invalidate multiple evidence records.
+- `HIGH` risk — required for material changes where multiple decision-relevant claims exist, where authorization consequences may change, where evidence dependencies are non-trivial, or where completion depends on multiple verification requirements. Elaborate impact records are not required for high-risk changes that are genuinely simple and isolated.
+
+Detailed relationship fields, the Impact Review template, the impact state vocabulary, and the procedure for material-change impact analysis live in [references/evidence-ledger.md](references/evidence-ledger.md).
+
 ## Verification status taxonomy
 
 

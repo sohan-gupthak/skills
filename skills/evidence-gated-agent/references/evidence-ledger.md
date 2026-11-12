@@ -180,7 +180,317 @@ Freshness does not silently invalidate user authorization. Evidence invalidation
 
 Freshness rules respect the existing distinction between static and runtime evidence. Static evidence (such as a repository inspection finding three consumers) may become stale if relevant repository code changes. Runtime evidence (such as an endpoint returning HTTP 200) may become invalidated if relevant runtime behavior changes. Fresh static evidence does not substitute for required fresh runtime evidence; freshness does not change evidence type requirements.
 
-## Source of truth hierarchy
+## Claim and evidence impact tracking
+
+Impact tracking adds lightweight, optional relationship fields to the
+ledger so that material changes can be traced to the claims, evidence,
+and verification requirements they may affect. It is a relationship
+model, not a graph engine: the goal is operational traceability, not
+automated repository analysis.
+### Relationship model
+
+The conceptual model is:
+
+```text
+Dependency / Condition
+        |
+        v
+Claim
+        |
+        v
+Evidence
+        |
+        v
+Verification Requirement
+```
+
+When something changes, the agent walks the same chain in reverse:
+
+```text
+Material Change
+        |
+        v
+Affected Dependencies / Conditions
+        |
+        v
+Affected Claims
+        |
+        v
+Affected Evidence
+        |
+        v
+Required Re-evaluation / Verification
+```
+
+The agent records these relationships where they materially help
+reasoning. They do not need to form a complete graph and are not
+required for every trivial observation.
+
+### Claim identity
+
+Where impact tracking is used, give meaningful claims stable
+identifiers (`C-001`, `C-002`, ...) so they can be referenced from
+evidence, verification, and impact records. Identifiers must be:
+
+- stable for the duration of the active change;
+- unique within the Evidence Ledger;
+- human-readable;
+- lightweight.
+
+Use identifiers primarily for decision-relevant claims, mandatory
+claims, high-risk claims, claims with multiple evidence dependencies,
+and claims likely to be affected by future changes. Do not require
+identifiers for trivial observations.
+
+### Evidence-to-claim relationships
+
+Evidence records should explicitly identify the claims they support
+when practical. This prevents an evidence record from becoming an
+isolated piece of information and lets the agent answer: "If this
+evidence becomes stale or invalidated, which claims are affected?"
+
+### Claim-to-dependency relationships
+
+Claims should identify relevant dependencies or conditions where
+impact tracking is needed. Dependencies may optionally carry
+identifiers (`D-001`, `D-002`, ...). Use identifiers only when they
+materially improve traceability; do not require artificial IDs for
+simple tasks.
+
+### Verification-to-claim relationships
+
+Where a claim depends on mandatory verification, make that
+relationship explicit. Verification records may similarly indicate
+which claims they support. The result is a traceable chain such as:
+
+```text
+C-001
+  |
+  +-- Evidence
+  |     +-- E-003
+  |     +-- E-007
+  |
+  +-- Verification
+        +-- V-002
+        +-- V-003
+```
+
+### Direct and indirect impact
+
+Distinguish conceptually between direct impact (the change
+immediately affects a claim's conditions) and indirect impact (the
+change propagates through one or more known relationships before
+reaching a claim). The agent must follow known or reasonably
+inferable impact relationships until further analysis would become
+speculative or disproportionate. Do not invent dependency chains
+without evidence.
+
+### Impact is not proof
+
+Recording a relationship such as `D-001 -> C-001` does not prove
+`C-001` is false. Recording `Change -> C-001` does not automatically
+prove the claim is broken. Impact tracking identifies what requires
+consideration; it does not establish what is true. The actual truth
+of a claim still requires appropriate evidence, classified by the
+existing freshness model.
+
+### Impact states
+
+Use a small set of impact states. The full vocabulary is not
+required for every change:
+
+- `NO_KNOWN_IMPACT` — the change was considered and no reasonable
+  connection to the claim was found.
+- `POTENTIAL_IMPACT` — a reasonable connection exists but has not
+  been confirmed against current state.
+- `REQUIRES_REVIEW` — a material connection has been identified and
+  the affected evidence or verification must be re-evaluated.
+- `CONFIRMED_IMPACT` — re-evaluation has confirmed that the change
+  affects the claim, with the specific effect recorded.
+- `UNKNOWN` — the change may affect the claim, but the repository
+  inspection did not establish the connection.
+
+The most important distinction is between `UNKNOWN` and
+`NO_KNOWN_IMPACT`. Unknown impact is not the same as no impact. Do
+not silently treat uncertainty as absence of effect.
+
+### Impact Review records
+
+For medium and high-risk changes where material changes occur,
+record a lightweight Impact Review. The review preserves the chain:
+
+```text
+Change
+-> Dependencies / Conditions
+-> Claims
+-> Evidence
+-> Verification
+-> Impact Result
+-> Required Action
+```
+
+Example shape:
+
+```md
+## Impact Review IR-001
+
+### Change
+
+API request schema changed.
+
+### Affected Dependencies / Conditions
+
+- D-001 — API schema
+
+### Potentially Affected Claims
+
+- C-001 — Existing clients remain compatible
+- C-003 — Existing request format remains accepted
+
+### Supporting Evidence
+
+- E-003
+- E-007
+
+### Required Verification
+
+- V-002
+- V-003
+
+### Impact Status
+
+REQUIRES_REVIEW
+
+### Result
+
+- E-003 -> STALE
+- E-007 -> INVALIDATED
+
+### Required Action
+
+Re-run compatibility verification.
+```
+
+The exact field names may vary; the chain
+`Change -> Dependencies -> Claims -> Evidence -> Verification -> Impact Result -> Required Action`
+must remain.
+
+### Material-change impact analysis procedure
+
+When a potentially material change occurs, the agent performs
+impact analysis before deciding whether the change affects existing
+claims:
+
+1. **Record the change.** Identify what changed and why it may be
+   material.
+2. **Identify affected dependencies or conditions.** Ask which known
+   dependencies or conditions the change affects (for example,
+   API schema, authentication configuration, database schema,
+   consumer assumption, runtime environment).
+3. **Identify affected claims.** Using explicit relationships where
+   available, ask which claims depend on those conditions.
+4. **Identify affected evidence.** Ask which evidence records
+   support those claims.
+5. **Identify affected verification.** Ask which mandatory
+   verification requirements support those claims.
+6. **Perform freshness classification.** Apply the existing
+   freshness model (`VALID` / `STALE` / `INVALIDATED` /
+   `RE-VERIFIED`) to the affected evidence. Do not introduce a
+   second competing validity system.
+7. **Determine required action.** Possible outcomes include no
+   action, re-evaluate evidence, re-run verification, gather new
+   evidence, request a checkpoint, or request clarification. The
+   action must remain proportional to risk and consequence.
+
+### Interaction with evidence freshness
+
+Impact tracking feeds freshness; it does not replace it. The
+relationship is:
+
+```text
+Impact Analysis
+        |
+        v
+Identifies affected claims / evidence
+        |
+        v
+Freshness Evaluation
+        |
+        v
+VALID / STALE / INVALIDATED / RE-VERIFIED
+        |
+        v
+Re-verification if required
+```
+
+Impact answers "what should we reconsider?". Freshness answers "is
+the existing evidence still applicable?". Verification answers
+"what is true about the current state?". Keep these
+responsibilities distinct.
+
+### Interaction with scope changes
+
+When scope changes:
+
+1. Record the scope change.
+2. Identify newly affected dependencies.
+3. Identify affected claims.
+4. Determine whether existing evidence applies to the expanded
+   scope.
+5. Determine whether new evidence is required.
+6. Re-evaluate risk.
+7. Determine whether authorization is required.
+
+Do not assume that evidence supporting the old scope automatically
+supports the expanded scope unless that is actually established.
+
+### Interaction with authorization
+
+Impact tracking must not silently expand authorization. Discovering
+that `Component B affects Component A` does not authorize modifying
+`Component B`. When impact analysis reveals work that may be
+required outside the authorized scope:
+
+1. Record the impact.
+2. Explain why it matters.
+3. Determine whether the existing authorization covers it.
+4. Request clarification or a checkpoint when required.
+
+Impact discovery and scope authorization remain separate gates.
+
+### Completion gating
+
+For medium and high-risk work using impact tracking, `COMPLETE`
+must not be available while a mandatory claim has an unresolved
+`UNKNOWN` or `REQUIRES_REVIEW` impact that could materially affect
+that claim. Completion blocking remains proportional and tied to:
+
+- mandatory claims;
+- required verification;
+- risk;
+- material consequence.
+
+Do not block completion because of unrelated or low-consequence
+unknown relationships.
+
+### Risk-tiered usage
+
+- `LOW` risk — optional. Use only when the relationship materially
+  helps reasoning.
+- `MEDIUM` risk — recommended when multiple claims depend on shared
+  conditions, when multiple components are affected, when scope
+  may evolve, or when changes may invalidate multiple evidence
+  records.
+- `HIGH` risk — required for material changes where multiple
+  decision-relevant claims exist, where authorization consequences
+  may change, where evidence dependencies are non-trivial, or where
+  completion depends on multiple verification requirements.
+
+Elaborate impact records are not required for high-risk changes that
+are genuinely simple and isolated. Use judgment while preserving
+rigor.
+
+ ## Source of truth hierarchy
 
 Authority depends on what is being established. The skill is
 fundamentally about evidence-gated factual claims, so a user
@@ -340,9 +650,25 @@ Level: LOW | MEDIUM | HIGH
 
 ### Claim: <decision-relevant claim>
 
+**Claim ID:** C-001
+
+**Claim:**
+
+<decision-relevant claim>
+
+**Dependencies / Conditions:**
+
+- D-001 — <condition the claim depends on>
+- D-002 — <condition the claim depends on>
+
 **Required Evidence**
 
-- ...
+- E-001
+- E-002
+
+**Required Verification**
+
+- V-001
 
 **Evidence Type**
 
@@ -357,7 +683,6 @@ Static | Runtime | Both
 UNVERIFIED | PASS | FAIL | PREEXISTING_FAILURE
 
 ### Claim: <next decision-relevant claim>
-
 (repeat for each)
 
 ## Evidence Records
@@ -365,6 +690,10 @@ UNVERIFIED | PASS | FAIL | PREEXISTING_FAILURE
 ### Evidence Record E-001
 
 **Claim:** <claim>
+
+**Supports Claims:**
+
+- C-001
 
 **Observed Fact:** <what was actually observed>
 
@@ -382,7 +711,7 @@ UNVERIFIED | PASS | FAIL | PREEXISTING_FAILURE
 
 **Dependencies / Conditions:**
 
-- ...
+- D-001 — <condition>
 
 **Freshness Review:**
 
@@ -478,6 +807,10 @@ required)
 
 ...
 
+**Supports Claims:**
+
+- C-001
+
 **Command / Method:**
 
 ...
@@ -499,6 +832,43 @@ PASS | FAIL | PREEXISTING_FAILURE | UNVERIFIED
 ...
 
 (repeat for every mandatory verification)
+
+## Impact Reviews
+
+### Impact Review IR-001
+
+**Change:**
+
+<description of the material change>
+
+**Affected Dependencies / Conditions:**
+
+- D-001 — <condition>
+
+**Potentially Affected Claims:**
+
+- C-001 — <claim>
+
+**Supporting Evidence:**
+
+- E-001
+
+**Required Verification:**
+
+- V-001
+
+**Impact Status:**
+
+NO_KNOWN_IMPACT | POTENTIAL_IMPACT | REQUIRES_REVIEW | CONFIRMED_IMPACT | UNKNOWN
+
+**Result:**
+
+- E-001 -> STALE
+- E-002 -> INVALIDATED
+
+**Required Action:**
+
+<re-run verification, gather new evidence, request checkpoint, request clarification, or no action>
 
 ## Limitations
 

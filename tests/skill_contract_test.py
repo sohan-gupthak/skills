@@ -412,4 +412,192 @@ class SkillContractTest(unittest.TestCase):
         self.assertIn("Historical stale or invalidation history must not", region)
         self.assertIn("permanently block completion", region)
         self.assertIn("may return to `VALID`", region)
-        self.assertIn("the new evidence record is `RE-VERIFIED`", region)
+
+    def test_impact_tracking_section_in_skill(self):
+        _, body = _frontmatter_and_body()
+        self.assertIn("## Claim and evidence impact tracking", body)
+        self.assertIn("references/evidence-ledger.md", body.split("## Claim and evidence impact tracking", 1)[1])
+
+    def test_impact_tracking_documents_relationship_chain(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Claim and evidence impact tracking", 1)[1]
+        for token in (
+            "Material Change",
+            "Affected Dependencies / Conditions",
+            "Affected Claims",
+            "Supporting Evidence",
+            "Required Verification",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, region)
+
+    def test_impact_is_not_proof(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("Impact tracking is not proof", region)
+        self.assertIn("does not establish that the claim is true or false", region)
+
+    def test_unknown_distinct_from_no_known_impact(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("Unknown impact is not the same as no impact", region)
+        self.assertIn("`UNKNOWN`", region)
+        self.assertIn("`NO_KNOWN_IMPACT`", region)
+        self.assertIn("UNKNOWN", region)
+        self.assertIn("NO_KNOWN_IMPACT", region)
+
+    def test_impact_does_not_authorize_scope_expansion(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("Discovering that a component is related to the change is not new authorization", region)
+        self.assertIn("Impact discovery", region)
+        self.assertIn("scope authorization", region)
+
+    def test_impact_tracking_feeds_freshness(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("Feed the affected evidence into the existing freshness classification", region)
+        self.assertIn("`VALID`", region)
+        self.assertIn("`STALE`", region)
+        self.assertIn("`INVALIDATED`", region)
+        self.assertIn("`RE-VERIFIED`", region)
+
+    def test_impact_unresolved_blocks_complete_proportionally(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("`COMPLETE`", region)
+        self.assertIn("`UNKNOWN`", region)
+        self.assertIn("`REQUIRES_REVIEW`", region)
+        self.assertIn("proportionally", region)
+        self.assertIn("mandatory", region.lower())
+
+    def test_impact_risk_tiered_usage(self):
+        _, body = _frontmatter_and_body()
+        region = body.split("## Claim and evidence impact tracking", 1)[1]
+        for token in ("`LOW`", "`MEDIUM`", "`HIGH`"):
+            with self.subTest(token=token):
+                self.assertIn(token, region)
+        self.assertIn("optional", region.lower())
+        self.assertIn("recommended", region.lower())
+        self.assertIn("required", region.lower())
+
+    def test_ledger_documents_impact_tracking_section(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        self.assertIn("## Claim and evidence impact tracking", text)
+
+    def test_ledger_documents_impact_states(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Claim and evidence impact tracking", 1)[1]
+        for state in (
+            "`NO_KNOWN_IMPACT`",
+            "`POTENTIAL_IMPACT`",
+            "`REQUIRES_REVIEW`",
+            "`CONFIRMED_IMPACT`",
+            "`UNKNOWN`",
+        ):
+            with self.subTest(state=state):
+                self.assertIn(state, region)
+        self.assertIn("Unknown impact is not the same as no impact", region)
+
+    def test_ledger_documents_material_change_procedure(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Claim and evidence impact tracking", 1)[1]
+        for token in (
+            "Record the change",
+            "Identify affected dependencies",
+            "Identify affected claims",
+            "Identify affected evidence",
+            "Identify affected verification",
+            "freshness classification",
+            "Determine required action",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, region)
+
+    def test_ledger_documents_impact_interactions(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("Interaction with evidence freshness", region)
+        self.assertIn("Interaction with scope changes", region)
+        self.assertIn("Interaction with authorization", region)
+        self.assertIn("Completion gating", region)
+
+    def test_ledger_impact_does_not_replace_freshness(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("does not replace", region.lower())
+        self.assertIn("second competing validity system", region)
+
+    def test_ledger_documents_impact_is_not_proof(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("Impact is not proof", region)
+        self.assertIn("does not establish what is true", region)
+
+    def test_ledger_documents_impact_does_not_authorize_scope(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        region = text.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("must not silently expand authorization", region)
+        self.assertIn("Impact discovery", region)
+        self.assertIn("scope authorization", region)
+
+    def test_ledger_template_includes_claim_relationships(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        template_start = text.split("```md\n# Evidence Ledger", 1)[1].split("```", 1)[0]
+        for token in (
+            "**Claim ID:**",
+            "**Supports Claims:**",
+            "## Impact Reviews",
+            "### Impact Review IR-001",
+            "**Impact Status:**",
+            "**Affected Dependencies / Conditions:**",
+            "**Potentially Affected Claims:**",
+            "**Supporting Evidence:**",
+            "**Required Verification:**",
+            "**Result:**",
+            "**Required Action:**",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, template_start)
+
+    def test_ledger_template_includes_impact_state_vocabulary(self):
+        reference = _skill_path().parent / "references" / "evidence-ledger.md"
+        text = reference.read_text()
+        template_start = text.split("```md\n# Evidence Ledger", 1)[1].split("```", 1)[0]
+        for state in ("NO_KNOWN_IMPACT", "POTENTIAL_IMPACT", "REQUIRES_REVIEW", "CONFIRMED_IMPACT", "UNKNOWN"):
+            with self.subTest(state=state):
+                self.assertIn(state, template_start)
+
+    def test_impact_tracking_does_not_weaken_existing_invariants(self):
+        for path in (_skill_path(), _skill_path().parent / "references" / "evidence-ledger.md"):
+            with self.subTest(path=str(path)):
+                text = path.read_text()
+                self.assertIn("The ledger is a record, not evidence", text)
+                self.assertIn("Authority depends on what is being established", text)
+                self.assertIn("two-axis", text.lower())
+                self.assertIn("Operational Phase", text)
+                self.assertIn("Disposition", text)
+                self.assertIn("freshness", text.lower())
+                self.assertIn("baseline", text.lower())
+                self.assertIn("runtime", text.lower())
+                self.assertIn("static", text.lower())
+                self.assertIn("`COMPLETE`", text)
+                self.assertIn("`BLOCKED_EVIDENCE`", text)
+                self.assertIn("`STALE`", text)
+                self.assertIn("`INVALIDATED`", text)
+                self.assertIn("`RE-VERIFIED`", text)
+                self.assertIn("CHECKPOINT APPROVAL REQUIRED", text)
+
+    def test_impact_tracking_documented_in_skill_references_ledger(self):
+        _, body = _frontmatter_and_body()
+        self.assertIn("## Claim and evidence impact tracking", body)
+        impact_region = body.split("## Claim and evidence impact tracking", 1)[1]
+        self.assertIn("references/evidence-ledger.md", impact_region)
