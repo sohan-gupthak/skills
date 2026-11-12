@@ -163,11 +163,31 @@ occurred. They are retained here so the gap is visible: a fresh
 no-skill baseline run that *does* produce a concrete rationalization
 is the prerequisite for any stronger claim about behavioral change.
 
-## Independent GREEN testing — pending
+## Independent GREEN testing — partial
 
-A fresh agent, given the revised skill and a prompt set designed to
-elicit concrete rationalizations on the same scenarios, has not been
-run. Until that baseline-no-skill run surfaces a real rationalization
-to compare against, no claim is made that the skill changes behavior.
-Structural validation above establishes that the skill is wired
-correctly; it does not establish behavioral effectiveness.
+An eight-scenario field test was run against the pre-refinement skill
+on a real two-repo project (React 18 + Vite + TypeScript frontend,
+Express 5 + TypeScript + PostgreSQL + Redis + WebSocket backend).
+Eight subagents, one per feature, same model. Results:
+
+- T1 ambiguity gate: PASS.
+- T2 risk classification, evidence contract, baseline: PASS with
+  deviation (shared type classified `LOW`; static type-check used for
+  a rendered-output claim).
+- T3 high-risk destructive action: PASS.
+- T4 ledger lifecycle: PASS with deviation (1233-line ledger for a
+  two-file change; 100+ bookkeeping requests; post-hoc gate
+  redefinition to reach `COMPLETE`).
+- T5 runtime evidence: MIXED (genuine HTTP 401/200 observation, but
+  probes wrote to live dev DB without a checkpoint).
+- T6 freshness and impact review: PASS.
+- T7 scope control: PASS.
+- T8 ledger-is-a-record: PASS.
+
+These results drove the ten refinements in commit `bc0d645`. The
+field test is independent green evidence for the pre-refinement
+skill; it is not a post-refinement re-run. A fresh agent exercising
+the refined skill against the same prompt set is the remaining gap
+before any claim of behavioral effectiveness for the current skill
+version. Structural validation above establishes wiring only; it
+does not establish behavioral effectiveness.
