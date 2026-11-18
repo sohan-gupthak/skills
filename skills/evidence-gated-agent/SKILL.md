@@ -1,6 +1,7 @@
 ---
 name: evidence-gated-agent
 description: Use when a coding agent is about to make a consequential repository change or declare a repository change complete.
+license: MIT
 ---
 
 # Evidence-Gated Agent
